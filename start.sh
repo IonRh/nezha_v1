@@ -171,34 +171,34 @@ main() {
 main
 
 while true; do
-    # Alpine 兼容的时间获取方式
-    current_hour=$(date +"%H")
-    current_minute=$(date +"%M")
+    # 获取当前日期（格式：YYYY-MM-DD）
+    current_date=$(date +"%Y-%m-%d")
 
-    # 检查是否为凌晨4点
-    if [ "$current_hour" -eq 4 ] && [ "$current_minute" -eq 0 ]; then
-        # 执行备份
-        [ -f "backup.sh" ] && { 
+    # 如果上次备份日期为空或当前日期与上次备份日期不同，执行备份
+    if [ "$last_backup_date" != "$current_date" ]; then
+        # 更新上次备份日期为今天
+        last_backup_date="$current_date"
+        
+        # 执行备份操作
+        if [ -f "backup.sh" ]; then
             chmod +x backup.sh
             ./backup.sh
-            
-            # 确保备份脚本执行完成，避免频繁触发
-            sleep 3600
-        }
-    fi
 
-    sleep 1800
+            updated=0
+            for repo_info in "${REPOS[@]}"; do
+                IFS=: read -r repo filename component <<< "$repo_info"
+                if download_and_update_component "$repo" "$filename" "$component"; then
+                    updated=1
+                fi
+            done
 
-    updated=0
-    for repo_info in "${REPOS[@]}"; do
-        IFS=: read -r repo filename component <<< "$repo_info"
-        if download_and_update_component "$repo" "$filename" "$component"; then
-            updated=1
+            if [ $updated -eq 1 ]; then
+                stop_services
+                main
+            fi
         fi
-    done
-
-    if [ $updated -eq 1 ]; then
-        stop_services
-        main
     fi
+
+    # 等待 1 小时后再次检查
+    sleep 3600
 done
