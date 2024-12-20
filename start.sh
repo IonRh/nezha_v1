@@ -108,7 +108,7 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
-        proxy_pass http://dashboard;
+        proxy_pass http://127.0.0.1:8008;
     }
 
     location / {
@@ -120,7 +120,7 @@ server {
         proxy_buffers 4 256k;
         proxy_busy_buffers_size 256k;
         proxy_max_temp_file_size 0;
-        proxy_pass http://dashboard;
+        proxy_pass http://127.0.0.1:8008;
     }
 }
 
