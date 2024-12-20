@@ -32,7 +32,7 @@ if [ -n "$LATEST_BACKUP" ]; then
 
     # Clean up
     rm "../$LATEST_BACKUP"
-    rm -rf temp_repo
+    rm -rf /app/temp_repo
 
     echo "Restore completed successfully"
 fi
