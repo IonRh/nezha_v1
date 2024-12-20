@@ -8,6 +8,7 @@ fi
 # Create timestamp for backup (Shanghai time)
 TIMESTAMP=$(TZ='Asia/Shanghai' date +"%Y-%m-%d-%H-%M-%S")
 BACKUP_FILE="data-${TIMESTAMP}.tar.gz"
+echo "$BACKUP_FILE" > README.md
 
 # Compress data directory and config.yml
 tar -czvf "$BACKUP_FILE" data config.yml
@@ -25,7 +26,7 @@ cd temp_repo
 git pull origin main
 
 # Add backup file to repo root
-cp "../$BACKUP_FILE" ./
+cp "../$BACKUP_FILE" "../README.md" ./
 
 # Remove old backups, keeping only the 5 most recent
 BACKUPS=$(ls data-*.tar.gz 2>/dev/null | sort -r)
