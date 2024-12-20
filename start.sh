@@ -170,19 +170,20 @@ main() {
 
 main
 
-# 记录上次备份的日期，初始化为空
-last_backup_date=""
-
 while true; do
     # 获取当前日期和小时（格式：YYYY-MM-DD 和 HH）
     current_date=$(date +"%Y-%m-%d")
     current_hour=$(date +"%H")
 
-    # 如果是凌晨4点且上次备份的日期不同，执行备份
-    if [ "$current_hour" -eq 4 ] && [ "$last_backup_date" != "$current_date" ]; then
-        # 更新上次备份日期为今天
-        last_backup_date="$current_date"
-        
+    # 使用 GitHub API 获取 README.md 文件内容
+    readme_content=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" \
+        "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md")
+
+    # 提取 README.md 文件中的日期（假设文件内容为 data-YYYY-MM-DD-HH-MM-SS.tar.gz 格式）
+    file_date=$(echo "$readme_content" | sed -n 's/^data-\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)-.*\.tar\.gz$/\1/p')
+
+    # 如果提取到了日期并且它不是今天的日期，且当前时间为凌晨4点，执行备份
+    if { [ "$file_date" != "$current_date" ] && [ "$current_hour" -eq 4 ]; } || [ "$readme_content" == "backup" ]; then
         # 执行备份操作
         if [ -f "backup.sh" ]; then
             chmod +x backup.sh
