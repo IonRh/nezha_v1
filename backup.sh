@@ -45,6 +45,6 @@ git push
 # Clean up
 cd ..
 rm "$BACKUP_FILE"
-rm -rf temp_repo
+rm -rf /app/temp_repo
 
 echo "Backup completed successfully"
