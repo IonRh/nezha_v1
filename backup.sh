@@ -36,7 +36,7 @@ for backup in $BACKUPS_TO_REMOVE; do
 done
 
 # Commit and push
-git add "$BACKUP_FILE"
+git add "$BACKUP_FILE" "README.md"
 git config user.name "Backup Script"
 git config user.email "backup@localhost"
 git commit -m "Add backup: $BACKUP_FILE"
