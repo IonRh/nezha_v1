@@ -170,12 +170,16 @@ main() {
 
 main
 
-while true; do
-    # 获取当前日期（格式：YYYY-MM-DD）
-    current_date=$(date +"%Y-%m-%d")
+# 记录上次备份的日期，初始化为空
+last_backup_date=""
 
-    # 如果上次备份日期为空或当前日期与上次备份日期不同，执行备份
-    if [ "$last_backup_date" != "$current_date" ]; then
+while true; do
+    # 获取当前日期和小时（格式：YYYY-MM-DD 和 HH）
+    current_date=$(date +"%Y-%m-%d")
+    current_hour=$(date +"%H")
+
+    # 如果是凌晨4点且上次备份的日期不同，执行备份
+    if [ "$current_hour" -eq 4 ] && [ "$last_backup_date" != "$current_date" ]; then
         # 更新上次备份日期为今天
         last_backup_date="$current_date"
         
@@ -202,3 +206,4 @@ while true; do
     # 等待 1 小时后再次检查
     sleep 3600
 done
+
