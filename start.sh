@@ -141,7 +141,28 @@ start_services() {
     nohup nginx >/dev/null 2>&1 &
     nohup ./cloudflared-linux-amd64 tunnel --protocol http2 run --token "$ARGO_AUTH" >/dev/null 2>&1 &
     nohup ./dashboard-linux-amd64 >/dev/null 2>&1 &
-    NZ_SERVER=$NZ_DOMAIN:443 NZ_TLS=true NZ_CLIENT_SECRET=$NZ_agentsecretkey nohup ./nezha-agent >/dev/null 2>&1 &
+    cat << EOF > config.yml
+client_secret: $NZ_agentsecretkey
+debug: false
+disable_auto_update: true
+disable_command_execute: false
+disable_force_update: true
+disable_nat: false
+disable_send_query: false
+gpu: false
+insecure_tls: false
+ip_report_period: 1800
+report_delay: 4
+server: $NZ_DOMAIN:443
+skip_connection_count: false
+skip_procs_count: false
+temperature: false
+tls: true 
+use_gitee_to_upgrade: false
+use_ipv6_country_code: false
+uuid: $idu
+EOF
+    nohup ./nezha-agent >/dev/null 2>&1 &
 }
 
 stop_services() {
