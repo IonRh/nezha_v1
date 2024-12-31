@@ -12,4 +12,5 @@ GITHUB_USERNAME     #github user name
 REPO_NAME           #backup repo name
 GITHUB_TOKEN        #github token
 NZ_DOMAIN           #nezha domain
+idu                 #nezha UUID
 ```
