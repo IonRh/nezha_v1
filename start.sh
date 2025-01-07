@@ -2,66 +2,64 @@
 
 # 安装 tzdata 确保时区支持
 apk add --no-cache tzdata
-chmod +x restart.sh
+chmod +x restart.sh backup.sh restore.sh renew.sh
 # 设置时区为上海
 export TZ='Asia/Shanghai'
 
 WORK_DIR=/app
-REPOS=(
-    "nezhahq/nezha:dashboard-linux-amd64.zip:dashboard"
-    "nezhahq/agent:nezha-agent_linux_amd64.zip:agent"
-)
 
-get_local_version() {
-    local component="$1"
-    local version=""
+
+download_agent_dashboard() {
+    # 获取系统架构
+    arch=$(uname -m)
     
-    case "$component" in
-        dashboard)
-            version=$(./dashboard-linux-amd64 -v 2>/dev/null)
+    # 根据系统架构选择对应的下载链接
+    case $arch in
+        x86_64)
+            filename="dashboard-linux-amd64.zip"
+            fileagent="nezha-agent_linux_amd64.zip"
             ;;
-        agent)
-            version=$(./nezha-agent -v 2>/dev/null | awk '{print $3}')
+        aarch64)
+            filename="dashboard-linux-arm64.zip"
+            fileagent="nezha-agent_linux_arm64.zip"
+            ;;
+        s390x)
+            filename="dashboard-linux-s390x.zip"
+            fileagent="nezha-agent_linux_s390x.zip"
+            ;;
+        *)
+            echo "Unsupported architecture: $arch"
+            exit 1
             ;;
     esac
-    
-    echo "$version" | grep -oE '[0-9.]+'
-}
+    # 下载文件
+    echo "Downloading $filename and $fileagent..."
+    wget -q "https://github.com/nezhahq/nezha/releases/download/$DASHBOARD_VERSION/$filename" -O "$filename"
+    if [ $? -ne 0 ]; then
+        echo "Error downloading $filename"
+        exit 1
+    fi
+    # 解压文件
+    unzip -qo "$filename" -d "$WORK_DIR" && rm "$filename"
+    if [ $? -ne 0 ]; then
+        echo "Error extracting $filename"
+        exit 1
+    fi
 
-get_remote_version() {
-    local repo="$1"
-    local version=$(curl -sL "https://api.github.com/repos/$repo/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
-    
-    echo "$version"
-}
+    # 下载 agent 文件
+    wget -q "https://github.com/nezhahq/agent/releases/latest/download/$fileagent" -O "$fileagent"
+    if [ $? -ne 0 ]; then
+        echo "Error downloading $fileagent"
+        exit 1
+    fi
+    # 解压 agent 文件
+    unzip -qo "$fileagent" -d "$WORK_DIR" && rm "$fileagent"
+    if [ $? -ne 0 ]; then
+        echo "Error extracting $fileagent"
+        exit 1
+    fi
 
-download_and_update_component() {
-    local repo="$1" filename="$2" component="$3"
-    
-    local local_version=$(get_local_version "$component")
-    local remote_version=$(get_remote_version "$repo")
-    
-    if [ -z "$local_version" ]; then
-        wget -q "https://github.com/$repo/releases/latest/download/$filename" -O "$filename"
-        if [ $? -eq 0 ]; then
-            unzip -qo "$filename" -d "$WORK_DIR" && rm "$filename"
-            return 0
-        fi
-    fi
-    
-    if [ -z "$remote_version" ]; then
-        return 1
-    fi
-    
-    if [ "$local_version" != "$remote_version" ]; then
-        wget -q "https://github.com/$repo/releases/latest/download/$filename" -O "$filename"
-        if [ $? -eq 0 ]; then
-            unzip -qo "$filename" -d "$WORK_DIR" && rm "$filename"
-            return 0
-        fi
-    fi
-    
-    return 1
+    echo "$filename and $fileagent completed!"
 }
 
 setup_ssl() {
@@ -176,12 +174,7 @@ main() {
 
     setup_ssl
     create_nginx_config
-
-    for repo_info in "${REPOS[@]}"; do
-        IFS=: read -r repo filename component <<< "$repo_info"
-        download_and_update_component "$repo" "$filename" "$component"
-    done
-
+    download_agent_dashboard
     [ ! -f "cloudflared-linux-amd64" ] && wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
 
     chmod +x dashboard-linux-amd64 cloudflared-linux-amd64 nezha-agent
@@ -207,24 +200,12 @@ while true; do
     if { [ "$file_date" != "$current_date" ] && [ "$current_hour" -eq 4 ]; } || [ "$readme_content" == "backup" ]; then
         # 执行备份操作
         if [ -f "backup.sh" ]; then
-            chmod +x backup.sh
             ./backup.sh
-
-            updated=0
-            for repo_info in "${REPOS[@]}"; do
-                IFS=: read -r repo filename component <<< "$repo_info"
-                if download_and_update_component "$repo" "$filename" "$component"; then
-                    updated=1
-                fi
-            done
-
-            if [ $updated -eq 1 ]; then
-                stop_services
-                main
-            fi
+        fi
+        if [ -z "$DASHBOARD_VERSION" ]; then
+            ./renew.sh
         fi
     fi
-
     # 等待 1 小时后再次检查
     sleep 3600
 done
