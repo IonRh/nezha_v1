@@ -123,7 +123,7 @@ server {
 }
 
 upstream dashboard {
-    server localhost:8008;
+    server 127.0.0.1:8008;
     keepalive 512;
 }
 EOF
