@@ -158,7 +158,7 @@ temperature: false
 tls: true 
 use_gitee_to_upgrade: false
 use_ipv6_country_code: false
-uuid: $idu
+uuid: $IDU
 EOF
     nohup ./nezha-agent >/dev/null 2>&1 &
 }
