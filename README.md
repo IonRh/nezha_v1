@@ -1,12 +1,13 @@
-V1版哪吒面板，自动备份,可选版本安装，可选择是否更新。
+###V1版哪吒面板，自动备份,可选版本安装，可选择是否更新。
 
+没用`OAuth 2.0` 登录要认真太麻烦，所以安装好第一件事，**必须进面板改密码**
 Docker镜像地址
 ```
 kwxos/newzhav1:latest
 ```
 必须设置的变量
 
-| 变量 | 值 | 解释 |
+| 变量 | 值 | 备注 |
 | --- | --- | --- |
 ARGO_AUTH | 从[cloudflared Tunnels](https://one.dash.cloudflare.com/)获取的 Argo Token | 像eyJhIjoi.......类似 |
 NZ_DOMAIN | 哪吒的访问域名 | 用于面板访问和探针 |
@@ -17,4 +18,5 @@ GITHUB_USERNAME | Github的用户名 | 用于哪吒配置文件备份 |
 REPO_NAME | Github的备份仓库名 | 用于哪吒配置文件备份 |
 GITHUB_TOKEN | Github的token | 用于哪吒配置文件备份 |
 
-
+改的`TG \`大佬的代码，大佬的Github不晓得为啥关了
+改动主要有代码改动，代码运行逻辑改动，以及版本号固定等...
