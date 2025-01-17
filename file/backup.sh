@@ -7,11 +7,11 @@ fi
 
 # Create timestamp for backup (Shanghai time)
 TIMESTAMP=$(TZ='Asia/Shanghai' date +"%Y-%m-%d-%H-%M-%S")
-BACKUP_FILE="data-${TIMESTAMP}.tar.gz"
+BACKUP_FILE="data-${TIMESTAMP}.zip"
 echo "$BACKUP_FILE" > README.md
 
 # Compress data directory and config.yml
-tar -czvf "$BACKUP_FILE" data config.yml
+zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data config.yml
 
 # GitHub repository details
 GITHUB_REPO="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
@@ -29,7 +29,7 @@ git pull origin main
 cp "../$BACKUP_FILE" "../README.md" ./
 
 # Remove old backups, keeping only the 5 most recent
-BACKUPS=$(ls data-*.tar.gz 2>/dev/null | sort -r)
+BACKUPS=$(ls data-*.zip 2>/dev/null | sort -r)
 BACKUPS_TO_REMOVE=$(echo "$BACKUPS" | tail -n +6)
 for backup in $BACKUPS_TO_REMOVE; do
     git rm "$backup"
