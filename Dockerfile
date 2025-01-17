@@ -1,6 +1,6 @@
 FROM nginx:alpine
 
-RUN apk add --no-cache wget unzip bash curl git tar openssl jq procps tzdata
+RUN apk add --no-cache wget unzip bash curl git tar openssl jq procps tzdata zip
 
 COPY file/* /app/
 
