@@ -21,7 +21,7 @@ cd temp_repo
 LATEST_BACKUP=$readme_content
 if [ -z "$readme_content" ]; then
     # Get the most recent backup file
-    LATEST_BACKUP=$(ls data-*.tar.gz | sort -r | head -n1)
+    LATEST_BACKUP=$(ls data-*.zip | sort -r | head -n1)
 fi
 if [ -n "$LATEST_BACKUP" ]; then
     # Copy backup to current directory
@@ -32,7 +32,7 @@ if [ -n "$LATEST_BACKUP" ]; then
     rm -f ../config.yml
 
     # Extract new backup
-    tar -xzvf "../$LATEST_BACKUP" -C ..
+    unzip -P "$ZIP_PASSWORD" "../$LATEST_BACKUP" -d ..
 
     # Clean up
     rm "../$LATEST_BACKUP"
