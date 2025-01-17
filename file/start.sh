@@ -193,8 +193,8 @@ while true; do
     readme_content=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" \
         "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md")
 
-    # 提取 README.md 文件中的日期（假设文件内容为 data-YYYY-MM-DD-HH-MM-SS.tar.gz 格式）
-    file_date=$(echo "$readme_content" | sed -n 's/^data-\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)-.*\.tar\.gz$/\1/p')
+    # 提取 README.md 文件中的日期（假设文件内容为 data-YYYY-MM-DD-HH-MM-SS.zip 格式）
+    file_date=$(echo "$readme_content" | sed -n 's/^data-\([0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}\)-.*\.zip$/\1/p')
 
     # 如果提取到了日期并且它不是今天的日期，且当前时间为凌晨4点，执行备份
     if { [ "$file_date" != "$current_date" ] && [ "$current_hour" -eq 4 ]; } || [ "$readme_content" == "backup" ]; then
