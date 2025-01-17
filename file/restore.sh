@@ -18,11 +18,10 @@ fi
 
 cd temp_repo
 
+LATEST_BACKUP=$readme_content
 if [ -z "$readme_content" ]; then
     # Get the most recent backup file
     LATEST_BACKUP=$(ls data-*.tar.gz | sort -r | head -n1)
-else:
-    LATEST_BACKUP="$readme_content"
 fi
 if [ -n "$LATEST_BACKUP" ]; then
     # Copy backup to current directory
