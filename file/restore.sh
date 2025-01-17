@@ -1,5 +1,7 @@
 #!/bin/bash
-
+# 使用 GitHub API 获取 README.md 文件内容
+readme_content=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" \
+    "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md")
 # Check if required environment variables are set
 if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
     echo "Error: Please set GITHUB_USERNAME, REPO_NAME, and GITHUB_TOKEN environment variables"
@@ -16,9 +18,12 @@ fi
 
 cd temp_repo
 
-# Get the most recent backup file
-LATEST_BACKUP=$(ls data-*.tar.gz | sort -r | head -n1)
-
+if [ -z "$readme_content" ]; then
+    # Get the most recent backup file
+    LATEST_BACKUP=$(ls data-*.tar.gz | sort -r | head -n1)
+else:
+    LATEST_BACKUP="$readme_content"
+fi
 if [ -n "$LATEST_BACKUP" ]; then
     # Copy backup to current directory
     cp "$LATEST_BACKUP" ../
