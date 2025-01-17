@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 安装 tzdata 确保时区支持
-apk add --no-cache tzdata
+
 chmod +x restart.sh backup.sh restore.sh renew.sh
 # 设置时区为上海
 export TZ='Asia/Shanghai'
