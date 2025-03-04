@@ -1,7 +1,7 @@
-FROM nginx:alpine
+FROM nginx:stable-alpine
 
 RUN apk update && apk add --no-cache wget unzip bash curl git tar openssl jq procps tzdata zip
-RUN apk add --no-cache sqlite git procps
+RUN apk add --no-cache sqlite3 git procps
 
 COPY file/* /app/
 
