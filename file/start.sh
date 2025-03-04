@@ -33,7 +33,7 @@ download_agent_dashboard() {
             ;;
     esac
     # 下载文件
-    echo "Downloading $filename and $fileagent..."
+    echo "Downloading $filename 和 $fileagent..."
     wget -q "https://github.com/nezhahq/nezha/releases/download/$DASHBOARD_VERSION/$filename" -O "$filename"
     if [ $? -ne 0 ]; then
         echo "Error downloading $filename"
@@ -59,7 +59,7 @@ download_agent_dashboard() {
         exit 1
     fi
 
-    echo "$filename and $fileagent completed!"
+    echo "$filename 和 $fileagent completed!"
 }
 
 setup_ssl() {
@@ -161,6 +161,9 @@ use_ipv6_country_code: false
 uuid: $IDU
 EOF
     nohup ./nezha-agent >/dev/null 2>&1 &
+    cd /app/data
+    sqlite3 sqlite.db "DELETE FROM service_histories;"
+    cd /app
 }
 
 stop_services() {
