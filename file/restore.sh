@@ -25,57 +25,19 @@ if [ -z "$readme_content" ]; then
 fi
 if [ -n "$LATEST_BACKUP" ]; then
     # Copy backup to current directory
-    # cp "$LATEST_BACKUP" ../
+    cp "$LATEST_BACKUP" ../
+
     # Remove existing data directory and config.yml
+    rm -rf ../data
     rm -f ../config.yml
+
     # Extract new backup
-    unzip -P "$ZIP_PASSWORD" "$LATEST_BACKUP" -d .
-    cp config.yml ../
-    cd data
-    database="sqlite3.db"
-    tables=(
-    "alert_rules"
-    "crons"
-    "ddns"
-    "nats"
-    "notification_group_notifications"
-    "notification groups"
-    "notifications"
-    "nz_waf"
-    "oauth2_binds"
-    "server_group_servers"
-    "server_groups"
-    "servers"
-    "services"
-    "transfers"
-    "users"
-    )
-    output_file="all_tables_data.sql"
-    for table in "${tables[@]}"; do
-    echo "--- Table: $table ---" >> "$output_file"
-    sqlite3 "$database" ".dump \"$table\"" >> "$output_file"
-    echo "" >> "$output_file"
-    if [ $? -ne 0 ]; then
-    echo "Error dumping table $table"
-    exit 1
-    fi
-    echo "" >> "$output_file"
-    done
-    echo "Exported all specified tables data to $output_file"
-    input_file="all_tables_data.sql"
-    output_file="all_inserts.sql"
-    grep "INSERT INTO" "$input_file" > "$output_file"
-    if [ $? -eq 0 ]; then
-    echo "Successfully extracted all INSERT statements to $output_file"
-    else
-    echo "Error extracting INSERT statements."
-    fi
-    cp all_inserts.sql /app/data
-    cd /app/data
-    sqlite3 sqlite3.db "DELETE FROM users;"
-    sqlite3 sqlite3.db < all_inserts.sql
+    unzip -P "$ZIP_PASSWORD" "../$LATEST_BACKUP" -d ..
+
     # Clean up
-    rm /app/data/all_inserts.sql "/app/data/$LATEST_BACKUP"
+    rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
+    cd /app/data
+    sqlite3 sqlite.db "DELETE FROM service_histories;"
     echo "Restore completed successfully"
 fi
