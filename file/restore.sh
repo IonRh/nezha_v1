@@ -29,7 +29,7 @@ if [ -n "$LATEST_BACKUP" ]; then
     # Remove existing data directory and config.yml
     rm -f ../config.yml
     # Extract new backup
-    unzip -P "$ZIP_PASSWORD" "$LATEST_BACKUP" -d .
+    unzip -P "$ZIP_PASSWORD" "$LATEST_BACKUP" -d 。
     cp config.yml ../
     cd data
     database="sqlite.db"
@@ -53,7 +53,7 @@ if [ -n "$LATEST_BACKUP" ]; then
     output_file="all_tables_data.sql"
     for table in "${tables[@]}"; do
     echo "--- Table: $table ---" >> "$output_file"
-    sqlite3 "$database" ".dump \"$table\"" >> "$output_file"
+    sqlite "$database" ".dump \"$table\"" >> "$output_file"
     echo "" >> "$output_file"
     if [ $? -ne 0 ]; then
     echo "Error dumping table $table"
@@ -72,8 +72,8 @@ if [ -n "$LATEST_BACKUP" ]; then
     fi
     cp all_inserts.sql /app/data
     cd /app/data
-    sqlite3 sqlite.db "DELETE FROM users;"
-    sqlite3 sqlite.db < all_inserts.sql
+    sqlite sqlite.db "DELETE FROM users;"
+    sqlite sqlite.db < all_inserts.sql
     # Clean up
     rm /app/data/all_inserts.sql "/app/data/$LATEST_BACKUP"
     rm -rf /app/temp_repo
