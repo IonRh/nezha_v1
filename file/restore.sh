@@ -38,6 +38,6 @@ if [ -n "$LATEST_BACKUP" ]; then
     rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
     cd /app/data
-    sqlite3 sqlite.db "DELETE FROM service_histories;"
+
     echo "Restore completed successfully"
 fi
