@@ -37,7 +37,5 @@ if [ -n "$LATEST_BACKUP" ]; then
     # Clean up
     rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
-    cd /app/data
-
     echo "Restore completed successfully"
 fi
