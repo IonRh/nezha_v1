@@ -4,7 +4,7 @@ readme_content=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: app
     "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md")
 # Check if required environment variables are set
 if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, 和 GITHUB_TOKEN environment variables"
+    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, and GITHUB_TOKEN environment variables"
     exit 1
 fi
 
@@ -37,5 +37,6 @@ if [ -n "$LATEST_BACKUP" ]; then
     # Clean up
     rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
+
     echo "Restore completed successfully"
 fi
