@@ -161,9 +161,6 @@ use_ipv6_country_code: false
 uuid: $IDU
 EOF
     nohup ./nezha-agent >/dev/null 2>&1 &
-    cd /app/data
-    sqlite3 sqlite.db "DELETE FROM service_histories;"
-    cd /app
 }
 
 stop_services() {
