@@ -1,7 +1,13 @@
 #!/bin/bash
+mkdir temp_file
+cp -R /app/data temp_file
+cp config.yml temp_file
+cd temp_file/data
+sqlite3 sqlite.db "DELETE FROM service_histories;"
+cd ..
 # Check if required environment variables are set
 if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, and GITHUB_TOKEN environment variables"
+    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, 和 GITHUB_TOKEN environment variables"
     exit 1
 fi
 
@@ -45,6 +51,6 @@ git push
 # Clean up
 cd ..
 rm "$BACKUP_FILE"
-rm -rf /app/temp_repo
+rm -rf /app/temp_file
 
 echo "Backup completed successfully"
