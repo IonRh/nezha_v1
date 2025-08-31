@@ -17,7 +17,7 @@ IDU | 面板当前所在的agent的uuid | 用于监测面板docker的状态 |
 GITHUB_USERNAME | Github的用户名 | 用于哪吒配置文件备份 |
 REPO_NAME | Github的备份仓库名 | 用于哪吒配置文件备份 |
 GITHUB_TOKEN | Github的token | 用于哪吒配置文件备份 |
-NZ_Force_Auth | 面板是否访客可见 | 可见为true，需输入密码为false |
+Force_Auth | 面板是否访客可见 | 可见为true，需输入密码为false |
 ZIP_PASSWORD | 备份的压缩包密码 | 用于哪吒配置文件备份压缩包 |
 
 变量获取方法参考:
