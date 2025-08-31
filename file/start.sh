@@ -155,7 +155,6 @@ server: $NZ_DOMAIN:443
 skip_connection_count: false
 skip_procs_count: false
 temperature: false
-force_auth: $Force_Auth
 tls: true 
 use_gitee_to_upgrade: false
 use_ipv6_country_code: false
