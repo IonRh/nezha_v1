@@ -8,6 +8,21 @@ export TZ='Asia/Shanghai'
 
 WORK_DIR=/app
 
+change_config() {
+if [ ! -f "/app/data/config.yaml" ]; then
+    echo "config.yaml文件为空！！！"
+else
+    # 检查是否已存在force_auth
+    if grep -q "^force_auth:" "$CONFIG_FILE"; then
+        # 替换现有配置
+        sed -i "s/^force_auth:.*/force_auth: $Force_Auth/" "$CONFIG_FILE"
+    else
+        # 添加新配置
+        echo "force_auth: $Force_Auth" >> "$CONFIG_FILE"
+    fi
+fi
+echo "已将 $CONFIG_FILE 中的 force_auth 设置为 $Force_Auth"
+}
 
 download_agent_dashboard() {
     # 获取系统架构
@@ -180,6 +195,9 @@ main() {
     chmod +x dashboard-linux-amd64 cloudflared-linux-amd64 nezha-agent
 
     start_services
+    change_config
+    pkill -f "dashboard-linux-amd64"
+    nohup ./dashboard-linux-amd64 >/dev/null 2>&1 &
 }
 
 main
