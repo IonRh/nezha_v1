@@ -7,9 +7,9 @@ chmod +x restart.sh backup.sh restore.sh renew.sh
 export TZ='Asia/Shanghai'
 
 WORK_DIR=/app
-
+CONFIG_FILE="/app/data/config.yaml"
 change_config() {
-if [ ! -f "/app/data/config.yaml" ]; then
+if [ ! -f "$CONFIG_FILE" ]; then
     echo "config.yaml文件为空！！！"
 else
     # 检查是否已存在force_auth
