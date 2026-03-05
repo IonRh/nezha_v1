@@ -3,6 +3,8 @@ mkdir temp_file
 cp -R /app/data temp_file
 cp config.yml temp_file
 cd temp_file/data
+
+sqlite3 sqlite.db "VACUUM;"
 sqlite3 sqlite.db "DELETE FROM service_histories;"
 cd ..
 # Check if required environment variables are set
