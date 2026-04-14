@@ -28,15 +28,16 @@ if [ -n "$LATEST_BACKUP" ]; then
     cp "$LATEST_BACKUP" ../
 
     # Remove existing data directory and config.yml
-    rm -rf ../data
+    # rm -rf ../data
     rm -f ../config.yml
 
     # Extract new backup
-    unzip -P "$ZIP_PASSWORD" "../$LATEST_BACKUP" -d ..
+    unzip -o -P "$ZIP_PASSWORD" "../$LATEST_BACKUP" -d ..
 
     # Clean up
     rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
+    sqlite3 sqlite.db < recovered.sql
 
     echo "Restore completed successfully"
 fi
