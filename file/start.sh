@@ -194,6 +194,8 @@ main() {
     start_services
     [ -f "restore.sh" ] && { chmod +x restore.sh; ./restore.sh; }
     pkill -f "dashboard-linux-amd64"
+    cd /app/data/ && sqlite3 sqlite.db < all_nezha_info.sql
+    cd /app/
     change_config
     nohup ./dashboard-linux-amd64 >/dev/null 2>&1 &
 }
