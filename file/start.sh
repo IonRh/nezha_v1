@@ -184,9 +184,6 @@ stop_services() {
 
 main() {
     check_env_variables
-
-    [ -f "restore.sh" ] && { chmod +x restore.sh; ./restore.sh; }
-
     setup_ssl
     create_nginx_config
     download_agent_dashboard
@@ -195,8 +192,9 @@ main() {
     chmod +x dashboard-linux-amd64 cloudflared-linux-amd64 nezha-agent
 
     start_services
-    change_config
+    [ -f "restore.sh" ] && { chmod +x restore.sh; ./restore.sh; }
     pkill -f "dashboard-linux-amd64"
+    change_config
     nohup ./dashboard-linux-amd64 >/dev/null 2>&1 &
 }
 
