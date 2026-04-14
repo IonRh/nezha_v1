@@ -37,7 +37,6 @@ if [ -n "$LATEST_BACKUP" ]; then
     # Clean up
     rm "../$LATEST_BACKUP"
     rm -rf /app/temp_repo
-    cd /app/data/ && sqlite3 sqlite.db < all_nezha_info.sql
 
     echo "Restore completed successfully"
 fi
