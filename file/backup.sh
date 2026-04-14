@@ -8,7 +8,7 @@ sqlite3 sqlite.db \
   ".output all_nezha_info.sql" \
   ".dump alert_rules crons ddns nats \"notification_group_notifications\" notification_groups notifications nz_waf \"oauth2_binds\" \"server_group_servers\" server_groups servers services users" \
   ".output stdout"
-
+rm -rf sqlite.db
 # 把 CREATE TABLE 改成 CREATE TABLE IF NOT EXISTS
 sed -i 's/CREATE TABLE `/CREATE TABLE IF NOT EXISTS `/g' all_nezha_info.sql
 
@@ -25,7 +25,7 @@ BACKUP_FILE="data-${TIMESTAMP}.zip"
 echo "$BACKUP_FILE" > README.md
 
 # Compress data directory and config.yml
-zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data config.yml
+zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data/ config.yml
 
 # GitHub repository details
 GITHUB_REPO="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
