@@ -4,8 +4,14 @@ cp -R /app/data temp_file
 cp config.yml temp_file
 cd temp_file/data
 
-sqlite3 sqlite.db "VACUUM;"
-sqlite3 sqlite.db "DELETE FROM service_histories;"
+sqlite3 sqlite.db \
+  ".output all_nezha_info.sql" \
+  ".dump alert_rules crons ddns nats \"notification_group_notifications\" notification_groups notifications nz_waf \"oauth2_binds\" \"server_group_servers\" server_groups servers services users" \
+  ".output stdout"
+
+# 把 CREATE TABLE 改成 CREATE TABLE IF NOT EXISTS
+sed -i 's/CREATE TABLE `/CREATE TABLE IF NOT EXISTS `/g' all_nezha_info.sql
+
 cd ..
 # Check if required environment variables are set
 if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
