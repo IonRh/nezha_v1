@@ -4,8 +4,12 @@ cp -R /app/data temp_file
 cp config.yml temp_file
 cd temp_file/data
 
-sqlite3 sqlite.db "VACUUM;"
+sqlite3 sqlite.db ".recover" | sqlite3 sqlite.db.new
+rm -rf sqlite.db
+mv sqlite.db.new sqlite.db
 sqlite3 sqlite.db "DELETE FROM service_histories;"
+sqlite3 sqlite.db "DELETE FROM transfers;"
+
 cd ..
 # Check if required environment variables are set
 if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
