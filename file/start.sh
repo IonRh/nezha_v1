@@ -88,7 +88,7 @@ EOF
 
     reverse_proxy /proto.NezhaService/* {
         header_up Host {host}
-        header_up nz-realip {remote_host}
+        header_up nz-realip {header.CF-Connecting-IP}
         transport http {
             versions h2c
             read_buffer 4096
@@ -99,7 +99,7 @@ EOF
     reverse_proxy {
         header_up Host {host}
         header_up Origin https://{host}
-        header_up nz-realip {remote_host}
+        header_up nz-realip {header.CF-Connecting-IP}
         transport http {
             read_buffer 16384
         }
