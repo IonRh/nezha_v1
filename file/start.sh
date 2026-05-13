@@ -56,15 +56,14 @@ create_caddy_config() {
     mkdir -p /etc/caddy
     cat << 'CADDYEOF' > /etc/caddy/Caddyfile
 :80 {
-    map {http.request.header.CF-Connecting-IP} {real_ip} {
-        ~.+ {http.request.header.CF-Connecting-IP}
-        default {remote_host}
+    @no_cf_ip {
+        not header CF-Connecting-IP *
     }
+    request_header @no_cf_ip CF-Connecting-IP {remote_host}
 
     reverse_proxy /proto.NezhaService/* {
         header_up Host {host}
-        header_up nz-realip {real_ip}
-        header_up CF-Connecting-IP {real_ip}
+        header_up nz-realip {http.request.header.CF-Connecting-IP}
         transport http {
             versions h2c
             read_buffer 4096
@@ -75,8 +74,7 @@ create_caddy_config() {
     reverse_proxy {
         header_up Host {host}
         header_up Origin https://{host}
-        header_up nz-realip {real_ip}
-        header_up CF-Connecting-IP {real_ip}
+        header_up nz-realip {http.request.header.CF-Connecting-IP}
         transport http {
             read_buffer 16384
         }
@@ -93,15 +91,14 @@ CADDYEOF
 EOF
     cat << 'CADDYEOF' >> /etc/caddy/Caddyfile
 
-    map {http.request.header.CF-Connecting-IP} {real_ip} {
-        ~.+ {http.request.header.CF-Connecting-IP}
-        default {remote_host}
+    @no_cf_ip {
+        not header CF-Connecting-IP *
     }
+    request_header @no_cf_ip CF-Connecting-IP {remote_host}
 
     reverse_proxy /proto.NezhaService/* {
         header_up Host {host}
-        header_up nz-realip {real_ip}
-        header_up CF-Connecting-IP {real_ip}
+        header_up nz-realip {http.request.header.CF-Connecting-IP}
         transport http {
             versions h2c
             read_buffer 4096
@@ -112,8 +109,7 @@ EOF
     reverse_proxy {
         header_up Host {host}
         header_up Origin https://{host}
-        header_up nz-realip {real_ip}
-        header_up CF-Connecting-IP {real_ip}
+        header_up nz-realip {http.request.header.CF-Connecting-IP}
         transport http {
             read_buffer 16384
         }
