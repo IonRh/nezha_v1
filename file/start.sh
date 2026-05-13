@@ -52,73 +52,114 @@ setup_ssl() {
     chmod 644 "$WORK_DIR/nezha.pem"
 }
 
-create_caddy_config() {
-    mkdir -p /etc/caddy
-    cat << 'CADDYEOF' > /etc/caddy/Caddyfile
-:80 {
-    @grpcProto {
-        path /proto.NezhaService/*
+create_nginx_config() {
+    cat << 'EOF' > /etc/nginx/conf.d/default.conf
+map $http_cf_connecting_ip $real_ip {
+    default $remote_addr;
+    "~.+"   $http_cf_connecting_ip;
+}
+
+server {
+    listen 80;
+    http2 on;
+
+    underscores_in_headers on;
+
+    location ^~ /proto.NezhaService/ {
+        grpc_set_header Host $host;
+        grpc_set_header nz-realip $real_ip;
+        grpc_read_timeout 600s;
+        grpc_send_timeout 600s;
+        grpc_socket_keepalive on;
+        client_max_body_size 10m;
+        grpc_buffer_size 4m;
+        grpc_pass grpc://dashboard;
     }
 
-    reverse_proxy @grpcProto {
-        header_up Host {host}
-        header_up nz-realip {remote_host}
-        header_up CF-Connecting-IP {remote_host}
-        transport http {
-            versions h2c
-            read_buffer 4096
-        }
-        to localhost:8008
+    location ~* ^/api/v1/ws/(server|terminal|file)(.*)$ {
+        proxy_set_header Host $host;
+        proxy_set_header nz-realip $real_ip;
+        proxy_set_header Origin https://$host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_pass http://127.0.0.1:8008;
     }
 
-    reverse_proxy {
-        header_up Host {host}
-        header_up Origin https://{host}
-        header_up nz-realip {remote_host}
-        header_up CF-Connecting-IP {remote_host}
-        transport http {
-            read_buffer 16384
-        }
-        to localhost:8008
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header nz-realip $real_ip;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        proxy_max_temp_file_size 0;
+        proxy_pass http://127.0.0.1:8008;
     }
 }
-CADDYEOF
 
-    # 443 块需要引用变量，单独写入
-    cat << EOF >> /etc/caddy/Caddyfile
-
-:443 {
-    tls $WORK_DIR/nezha.pem $WORK_DIR/nezha.key
+upstream dashboard {
+    server 127.0.0.1:8008;
+    keepalive 512;
+}
 EOF
-    cat << 'CADDYEOF' >> /etc/caddy/Caddyfile
 
-    @grpcProto {
-        path /proto.NezhaService/*
+    # 443 端口配置（agent 通过 CF Tunnel 连接）
+    cat << SSLEOF > /etc/nginx/conf.d/ssl.conf
+server {
+    listen 443 ssl;
+    http2 on;
+
+    ssl_certificate     $WORK_DIR/nezha.pem;
+    ssl_certificate_key $WORK_DIR/nezha.key;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    underscores_in_headers on;
+
+    set \$real_ip \$remote_addr;
+    if (\$http_cf_connecting_ip) {
+        set \$real_ip \$http_cf_connecting_ip;
     }
 
-    reverse_proxy @grpcProto {
-        header_up Host {host}
-        header_up nz-realip {remote_host}
-        header_up CF-Connecting-IP {remote_host}
-        transport http {
-            versions h2c
-            read_buffer 4096
-        }
-        to localhost:8008
+    location ^~ /proto.NezhaService/ {
+        grpc_set_header Host \$host;
+        grpc_set_header nz-realip \$real_ip;
+        grpc_read_timeout 600s;
+        grpc_send_timeout 600s;
+        grpc_socket_keepalive on;
+        client_max_body_size 10m;
+        grpc_buffer_size 4m;
+        grpc_pass grpc://dashboard;
     }
 
-    reverse_proxy {
-        header_up Host {host}
-        header_up Origin https://{host}
-        header_up nz-realip {remote_host}
-        header_up CF-Connecting-IP {remote_host}
-        transport http {
-            read_buffer 16384
-        }
-        to localhost:8008
+    location ~* ^/api/v1/ws/(server|terminal|file)(.*)\$ {
+        proxy_set_header Host \$host;
+        proxy_set_header nz-realip \$real_ip;
+        proxy_set_header Origin https://\$host;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_pass http://127.0.0.1:8008;
+    }
+
+    location / {
+        proxy_set_header Host \$host;
+        proxy_set_header nz-realip \$real_ip;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+        proxy_max_temp_file_size 0;
+        proxy_pass http://127.0.0.1:8008;
     }
 }
-CADDYEOF
+SSLEOF
 }
 
 check_env_variables() {
@@ -128,7 +169,7 @@ check_env_variables() {
 }
 
 start_services() {
-    nohup caddy run --config /etc/caddy/Caddyfile >/dev/null 2>&1 &
+    nohup nginx >/dev/null 2>&1 &
 
     # cloudflared 也需要按架构选择
     local cf_bin="cloudflared-linux-${ARCH}"
@@ -161,7 +202,7 @@ EOF
 }
 
 stop_services() {
-    pkill -f "dashboard-linux-|cloudflared-linux-|nezha-agent|caddy" || true
+    pkill -f "dashboard-linux-|cloudflared-linux-|nezha-agent|nginx" || true
 }
 
 main() {
@@ -170,7 +211,7 @@ main() {
     [ -f "restore.sh" ] && ./restore.sh
 
     setup_ssl
-    create_caddy_config
+    create_nginx_config
     download_agent_dashboard
 
     # 下载 cloudflared
