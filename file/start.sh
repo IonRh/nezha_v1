@@ -64,6 +64,7 @@ create_caddy_config() {
     reverse_proxy /proto.NezhaService/* {
         header_up Host {host}
         header_up nz-realip {real_ip}
+        header_up CF-Connecting-IP {real_ip}
         transport http {
             versions h2c
             read_buffer 4096
@@ -75,6 +76,7 @@ create_caddy_config() {
         header_up Host {host}
         header_up Origin https://{host}
         header_up nz-realip {real_ip}
+        header_up CF-Connecting-IP {real_ip}
         transport http {
             read_buffer 16384
         }
@@ -99,6 +101,7 @@ EOF
     reverse_proxy /proto.NezhaService/* {
         header_up Host {host}
         header_up nz-realip {real_ip}
+        header_up CF-Connecting-IP {real_ip}
         transport http {
             versions h2c
             read_buffer 4096
@@ -110,6 +113,7 @@ EOF
         header_up Host {host}
         header_up Origin https://{host}
         header_up nz-realip {real_ip}
+        header_up CF-Connecting-IP {real_ip}
         transport http {
             read_buffer 16384
         }
