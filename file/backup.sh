@@ -1,65 +1,62 @@
 #!/bin/bash
-mkdir temp_file
-cp -R /app/data temp_file
-cp config.yml temp_file
-cd temp_file/data
+set -e
 
-sqlite3 sqlite.db ".recover" | sqlite3 sqlite.db.new
-rm -rf sqlite.db
-mv sqlite.db.new sqlite.db
-sqlite3 sqlite.db "DELETE FROM service_histories;"
-sqlite3 sqlite.db "DELETE FROM transfers;"
-
-cd ..
-# Check if required environment variables are set
-if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, 和 GITHUB_TOKEN environment variables"
+# 检查必要环境变量
+if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ] || [ -z "$ZIP_PASSWORD" ]; then
+    echo "Error: 请设置 GITHUB_USERNAME, REPO_NAME, GITHUB_TOKEN, ZIP_PASSWORD"
     exit 1
 fi
 
-# Create timestamp for backup (Shanghai time)
+WORK_DIR=/app
+TEMP_DIR="$WORK_DIR/temp_backup"
+GITHUB_REPO="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
 TIMESTAMP=$(TZ='Asia/Shanghai' date +"%Y-%m-%d-%H-%M-%S")
 BACKUP_FILE="data-${TIMESTAMP}.zip"
-echo "$BACKUP_FILE" > README.md
 
-# Compress data directory and config.yml
-zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data config.yml
+# 清理旧临时目录
+rm -rf "$TEMP_DIR"
+mkdir -p "$TEMP_DIR"
 
-# GitHub repository details
-GITHUB_REPO="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
+# 复制数据
+cp -R "$WORK_DIR/data" "$TEMP_DIR/"
+cp "$WORK_DIR/config.yml" "$TEMP_DIR/" 2>/dev/null || true
 
-# Clone or pull the repo
-if [ ! -d "temp_repo" ]; then
-    git clone "$GITHUB_REPO" temp_repo
+# 压缩 sqlite 数据库
+if [ -f "$TEMP_DIR/data/sqlite.db" ]; then
+    cd "$TEMP_DIR/data"
+    sqlite3 sqlite.db ".recover" | sqlite3 sqlite.db.new && mv sqlite.db.new sqlite.db || true
+    sqlite3 sqlite.db "DELETE FROM service_histories;" 2>/dev/null || true
+    sqlite3 sqlite.db "DELETE FROM transfers;" 2>/dev/null || true
 fi
+
+# 打包
+cd "$TEMP_DIR"
+echo "$BACKUP_FILE" > README.md
+zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data config.yml 2>/dev/null || zip -r -P "$ZIP_PASSWORD" "$BACKUP_FILE" data
+
+# 克隆仓库并推送
+rm -rf temp_repo
+git clone "$GITHUB_REPO" temp_repo
 cd temp_repo
-# Add backup file to repo root
 cp "../$BACKUP_FILE" "../README.md" ./
 
-# Remove old backups, keeping only the 5 most recent
-# 删除旧备份文件，保留最新 5 个
-BACKUPS=$(ls data-*.zip 2>/dev/null | sort -r)
-BACKUPS_TO_REMOVE=$(echo "$BACKUPS" | tail -n +6)
+# 保留最新 5 个备份
+BACKUPS_TO_REMOVE=$(ls data-*.zip 2>/dev/null | sort -r | tail -n +6)
 for backup in $BACKUPS_TO_REMOVE; do
-    git rm "$backup"
+    rm -f "$backup"
 done
 
-rm -rf ".git"
+rm -rf .git
 git init
 git branch -M main
-
-# Commit and push
 git config user.name "Backup Script"
 git config user.email "backup@localhost"
-# 提交新文件
 git add .
-git commit -m "添加备份：$BACKUP_FILE"
-# 设置远程仓库并强制推送（重写历史）
+git commit -m "备份：$BACKUP_FILE"
 git remote add origin "$GITHUB_REPO"
 git push -u --force origin main
 
-# Clean up
-cd ..
-rm "$BACKUP_FILE"
-rm -rf /app/temp_file
-echo "备份完成，历史提交已删除"
+# 清理
+cd "$WORK_DIR"
+rm -rf "$TEMP_DIR"
+echo "备份完成：$BACKUP_FILE"

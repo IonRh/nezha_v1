@@ -1,4 +1,4 @@
-FROM nginx:alpine
+FROM caddy:alpine
 
 RUN apk add --no-cache wget unzip bash curl git tar openssl jq procps tzdata zip sqlite sqlite-libs
 

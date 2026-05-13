@@ -1,42 +1,41 @@
 #!/bin/bash
-# 使用 GitHub API 获取 README.md 文件内容
-readme_content=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" \
-    "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md")
-# Check if required environment variables are set
-if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: Please set GITHUB_USERNAME, REPO_NAME, and GITHUB_TOKEN environment variables"
-    exit 1
+set -e
+
+WORK_DIR=/app
+
+# 检查必要环境变量
+if [ -z "$GITHUB_USERNAME" ] || [ -z "$REPO_NAME" ] || [ -z "$GITHUB_TOKEN" ] || [ -z "$ZIP_PASSWORD" ]; then
+    echo "Restore: 缺少备份相关环境变量，跳过恢复"
+    exit 0
 fi
 
-# GitHub repository details
 GITHUB_REPO="https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git"
 
-# Clone or pull the repo
-if [ ! -d "temp_repo" ]; then
-    git clone "$GITHUB_REPO" temp_repo
+# 获取最新备份文件名
+LATEST_BACKUP=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3.raw" \
+    "https://api.github.com/repos/$GITHUB_USERNAME/$REPO_NAME/contents/README.md" 2>/dev/null | tr -d '[:space:]')
+
+if [ -z "$LATEST_BACKUP" ] || [ "$LATEST_BACKUP" = "backup" ]; then
+    echo "Restore: 无有效备份文件，跳过"
+    exit 0
 fi
 
-cd temp_repo
+echo "Restore: 正在恢复 $LATEST_BACKUP ..."
 
-LATEST_BACKUP=$readme_content
-if [ -z "$readme_content" ]; then
-    # Get the most recent backup file
-    LATEST_BACKUP=$(ls data-*.zip | sort -r | head -n1)
+# 克隆仓库
+rm -rf "$WORK_DIR/temp_repo"
+git clone --depth 1 "$GITHUB_REPO" "$WORK_DIR/temp_repo"
+
+if [ ! -f "$WORK_DIR/temp_repo/$LATEST_BACKUP" ]; then
+    echo "Restore: 备份文件不存在，跳过"
+    rm -rf "$WORK_DIR/temp_repo"
+    exit 0
 fi
-if [ -n "$LATEST_BACKUP" ]; then
-    # Copy backup to current directory
-    cp "$LATEST_BACKUP" ../
 
-    # Remove existing data directory and config.yml
-    rm -rf ../data
-    rm -f ../config.yml
+# 解压恢复
+rm -rf "$WORK_DIR/data" "$WORK_DIR/config.yml"
+unzip -P "$ZIP_PASSWORD" "$WORK_DIR/temp_repo/$LATEST_BACKUP" -d "$WORK_DIR"
 
-    # Extract new backup
-    unzip -P "$ZIP_PASSWORD" "../$LATEST_BACKUP" -d ..
-
-    # Clean up
-    rm "../$LATEST_BACKUP"
-    rm -rf /app/temp_repo
-
-    echo "Restore completed successfully"
-fi
+# 清理
+rm -rf "$WORK_DIR/temp_repo"
+echo "Restore: 恢复完成"

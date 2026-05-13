@@ -1,88 +1,55 @@
 #!/bin/bash
-
-# 设置时区为上海
-export TZ='Asia/Shanghai'
-
-stop_services() {
-    pkill -f "dashboard-linux-amd64|nezha-agent"
-}
+set -e
 
 WORK_DIR=/app
-REPOS=(
-    "nezhahq/nezha:dashboard-linux-amd64.zip:dashboard"
-    "nezhahq/agent:nezha-agent_linux_amd64.zip:agent"
-)
+cd "$WORK_DIR"
+
+# 检测架构
+case $(uname -m) in
+    x86_64)  ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+    s390x)   ARCH="s390x" ;;
+    *)       echo "Unsupported arch"; exit 1 ;;
+esac
 
 get_local_version() {
-    local component="$1"
-    local version=""
-    
-    case "$component" in
-        dashboard)
-            version=$(./dashboard-linux-amd64 -v 2>/dev/null)
-            ;;
-        agent)
-            version=$(./nezha-agent -v 2>/dev/null | awk '{print $3}')
-            ;;
+    case "$1" in
+        dashboard) ./dashboard-linux-${ARCH} -v 2>/dev/null | grep -oE '[0-9.]+' ;;
+        agent)     ./nezha-agent -v 2>/dev/null | grep -oE '[0-9.]+' ;;
     esac
-    
-    echo "$version" | grep -oE '[0-9.]+'
 }
 
 get_remote_version() {
-    local repo="$1"
-    local version=$(curl -sL "https://api.github.com/repos/$repo/releases/latest" | grep '"tag_name":' | sed -E 's/.*"v?([0-9.]+)".*/\1/')
-    
-    echo "$version"
+    curl -sL "https://api.github.com/repos/$1/releases/latest" | grep '"tag_name":' | grep -oE '[0-9.]+'
 }
 
-download_and_update_component() {
+update_component() {
     local repo="$1" filename="$2" component="$3"
-    
-    local local_version=$(get_local_version "$component")
-    local remote_version=$(get_remote_version "$repo")
-    
-    if [ -z "$local_version" ]; then
-        wget -q "https://github.com/$repo/releases/latest/download/$filename" -O "$filename"
-        if [ $? -eq 0 ]; then
-            unzip -qo "$filename" -d "$WORK_DIR" && rm "$filename"
-            return 0
-        fi
-    fi
-    
-    if [ -z "$remote_version" ]; then
-        return 1
-    fi
-    
-    if [ "$local_version" != "$remote_version" ]; then
-        wget -q "https://github.com/$repo/releases/latest/download/$filename" -O "$filename"
-        if [ $? -eq 0 ]; then
-            unzip -qo "$filename" -d "$WORK_DIR" && rm "$filename"
-            return 0
-        fi
-    fi
-    
-    return 1
+    local local_ver=$(get_local_version "$component")
+    local remote_ver=$(get_remote_version "$repo")
+
+    [ -z "$remote_ver" ] && return 1
+    [ "$local_ver" = "$remote_ver" ] && return 1
+
+    echo "更新 $component: $local_ver -> $remote_ver"
+    wget -q "https://github.com/$repo/releases/latest/download/$filename" -O "$filename"
+    unzip -qo "$filename" -d "$WORK_DIR" && rm -f "$filename"
 }
 
-update(){
-for repo_info in "${REPOS[@]}"; do
-    IFS=: read -r repo filename component <<< "$repo_info"
-    if download_and_update_component "$repo" "$filename" "$component"; then
-        updated=1
-    fi
-done
-}
+echo "检查更新..."
+updated=0
 
+update_component "nezhahq/nezha" "dashboard-linux-${ARCH}.zip" "dashboard" && updated=1 || true
+update_component "nezhahq/agent" "nezha-agent_linux_${ARCH}.zip" "agent" && updated=1 || true
 
-
-start_services() {
-    nohup ./dashboard-linux-amd64 >/dev/null 2>&1 &
+if [ "$updated" -eq 1 ]; then
+    chmod +x dashboard-linux-${ARCH} nezha-agent 2>/dev/null || true
+    echo "重启服务..."
+    pkill -f "dashboard-linux-${ARCH}|nezha-agent" || true
+    sleep 1
+    nohup ./dashboard-linux-${ARCH} >/dev/null 2>&1 &
     nohup ./nezha-agent >/dev/null 2>&1 &
-}
-echo "stop dashboard ..."
-stop_services
-echo "start renew dashboard ..."
-update
-echo "start dashboard ..."
-start_services
+    echo "更新完成"
+else
+    echo "已是最新版本"
+fi

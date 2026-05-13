@@ -2,26 +2,28 @@ name: "Build and push images"
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - dev
 
 jobs:
   Building:
-      runs-on: ubuntu-latest
-      permissions:
-        contents: write
-        actions: write
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
 
-      name: "Build image"
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        DOCKERHUB_REPOSITORY: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:latest
+    name: "Build image"
+    env:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-      steps:
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
-          
+
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v2
         with:
@@ -29,7 +31,7 @@ jobs:
           repository: ${{ github.repository }}
           retain_days: 0
           keep_minimum_runs: 2
-        
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3.0.0
 
@@ -42,9 +44,18 @@ jobs:
           username: ${{ env.DOCKER_USERNAME }}
           password: ${{ env.DOCKER_PASSWORD }}
 
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.ref_name }}" = "dev" ]; then
+            echo "tag=dev" >> $GITHUB_OUTPUT
+          else
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Push images to Docker hub
         uses: docker/build-push-action@v5.1.0
         with:
           push: true
           platforms: linux/amd64, linux/arm64, linux/arm/v7
-          tags: ${{ env.DOCKERHUB_REPOSITORY }}
+          tags: ${{ env.DOCKER_USERNAME }}/${{ secrets.DOCKER_REPO }}:${{ steps.tag.outputs.tag }}
