@@ -55,12 +55,6 @@ setup_ssl() {
 create_caddy_config() {
     mkdir -p /etc/caddy
     cat << 'CADDYEOF' > /etc/caddy/Caddyfile
-{
-    servers {
-        trusted_proxies static private_ranges
-    }
-}
-
 :80 {
     @grpcProto {
         path /proto.NezhaService/*
@@ -68,7 +62,8 @@ create_caddy_config() {
 
     reverse_proxy @grpcProto {
         header_up Host {host}
-        header_up nz-realip {client_ip}
+        header_up nz-realip {remote_host}
+        header_up CF-Connecting-IP {remote_host}
         transport http {
             versions h2c
             read_buffer 4096
@@ -79,7 +74,8 @@ create_caddy_config() {
     reverse_proxy {
         header_up Host {host}
         header_up Origin https://{host}
-        header_up nz-realip {client_ip}
+        header_up nz-realip {remote_host}
+        header_up CF-Connecting-IP {remote_host}
         transport http {
             read_buffer 16384
         }
@@ -102,7 +98,8 @@ EOF
 
     reverse_proxy @grpcProto {
         header_up Host {host}
-        header_up nz-realip {client_ip}
+        header_up nz-realip {remote_host}
+        header_up CF-Connecting-IP {remote_host}
         transport http {
             versions h2c
             read_buffer 4096
@@ -113,7 +110,8 @@ EOF
     reverse_proxy {
         header_up Host {host}
         header_up Origin https://{host}
-        header_up nz-realip {client_ip}
+        header_up nz-realip {remote_host}
+        header_up CF-Connecting-IP {remote_host}
         transport http {
             read_buffer 16384
         }
