@@ -55,8 +55,13 @@ setup_ssl() {
 create_nginx_config() {
     cat << 'EOF' > /etc/nginx/conf.d/default.conf
 map $http_cf_connecting_ip $real_ip {
-    default $remote_addr;
+    default $http_x_real_ip;
     "~.+"   $http_cf_connecting_ip;
+}
+
+map $real_ip $final_ip {
+    default $remote_addr;
+    "~.+"   $real_ip;
 }
 
 server {
@@ -67,8 +72,8 @@ server {
 
     location ^~ /proto.NezhaService/ {
         grpc_set_header Host $host;
-        grpc_set_header nz-realip $real_ip;
-        grpc_set_header CF-Connecting-IP $real_ip;
+        grpc_set_header nz-realip $final_ip;
+        grpc_set_header CF-Connecting-IP $final_ip;
         grpc_read_timeout 600s;
         grpc_send_timeout 600s;
         grpc_socket_keepalive on;
@@ -79,8 +84,8 @@ server {
 
     location ~* ^/api/v1/ws/(server|terminal|file)(.*)$ {
         proxy_set_header Host $host;
-        proxy_set_header nz-realip $real_ip;
-        proxy_set_header CF-Connecting-IP $real_ip;
+        proxy_set_header nz-realip $final_ip;
+        proxy_set_header CF-Connecting-IP $final_ip;
         proxy_set_header Origin https://$host;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -91,8 +96,8 @@ server {
 
     location / {
         proxy_set_header Host $host;
-        proxy_set_header nz-realip $real_ip;
-        proxy_set_header CF-Connecting-IP $real_ip;
+        proxy_set_header nz-realip $final_ip;
+        proxy_set_header CF-Connecting-IP $final_ip;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         proxy_buffer_size 128k;
@@ -124,6 +129,9 @@ server {
     underscores_in_headers on;
 
     set \$real_ip \$remote_addr;
+    if (\$http_x_real_ip) {
+        set \$real_ip \$http_x_real_ip;
+    }
     if (\$http_cf_connecting_ip) {
         set \$real_ip \$http_cf_connecting_ip;
     }
