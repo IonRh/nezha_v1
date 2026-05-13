@@ -54,8 +54,13 @@ setup_ssl() {
 
 create_nginx_config() {
     cat << 'EOF' > /etc/nginx/conf.d/default.conf
+map $http_x_forwarded_for $xff_first_ip {
+    default "";
+    "~^(?P<first>[^,]+)" $first;
+}
+
 map $http_cf_connecting_ip $real_ip {
-    default $http_x_real_ip;
+    default $xff_first_ip;
     "~.+"   $http_cf_connecting_ip;
 }
 
@@ -129,6 +134,9 @@ server {
     underscores_in_headers on;
 
     set \$real_ip \$remote_addr;
+    if (\$http_x_forwarded_for ~* "^([^,]+)") {
+        set \$real_ip \$1;
+    }
     if (\$http_x_real_ip) {
         set \$real_ip \$http_x_real_ip;
     }
