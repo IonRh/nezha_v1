@@ -94,13 +94,13 @@ services:
 
 | 变量 | 是否必填 | 用途 | 备注 |
 | --- | --- | --- | --- |
-| `ARGO_AUTH` | 必填 | Cloudflare Tunnel Token | 在 Zero Trust 的 Tunnels 里获取；通常为一长串 token |
-| `NZ_DOMAIN` | 必填 | 面板访问域名 / agent 上报域名 | agent 连接使用 `$NZ_DOMAIN:443` |
+| `ARGO_AUTH` | 可选 | Cloudflare Tunnel Token | 不填则不启动 cloudflared，面板仅通过容器端口访问 |
+| `NZ_DOMAIN` | 可选 | 面板访问域名 / agent 上报域名 | 与 `IDU` 任一未填则不安装 agent |
 | `NZ_agentsecretkey` | 必填 | agent 密钥 | 需与 dashboard 配置中的 `agentsecretkey` 一致 |
 | `Force_Auth` | 建议 | 是否允许访客可见 | `true`=访客可见；`false`=需要登录（建议 `false`） |
 | `DASHBOARD_VERSION` | 可选 | 固定面板版本 | 例如 `v1.5.11`；设置后不自动更新 |
-| `IDU` | 可选 | agent 的 UUID | 写入 agent 配置 `uuid` 字段，用于识别该容器对应的 agent |
-| `GITHUB_USERNAME` | 备份必填 | 备份用 GitHub 用户名 | 仅在启用自动备份时需要 |
+| `IDU` | 可选 | agent 的 UUID | 与 `NZ_DOMAIN` 任一未填则不安装 agent |
+| `GITHUB_USERNAME` | 备份必填 | 备份用 GitHub 用户名 | 四个备份变量全部填写才启用备份 |
 | `REPO_NAME` | 备份必填 | 备份仓库名 | 仓库根目录保存 `data-*.zip` |
 | `GITHUB_TOKEN` | 备份必填 | 备份用 GitHub Token | 建议最小权限 + 专用仓库 |
 | `ZIP_PASSWORD` | 备份必填 | 备份 zip 密码 | 备份与恢复都需要该密码 |
@@ -133,7 +133,11 @@ services:
 - Cloudflare Tunnel 要怎么指向容器？
   - 在 Zero Trust 后台的 Tunnel 配置里，将 Public Hostname/Ingress 的 Service 指向容器实际提供的 HTTP 服务（通常是 `http://localhost:80`）。
 - 我不想用备份，需要配置 GitHub 相关变量吗？
-  - 不配置也能运行面板，但到凌晨 4 点会尝试触发备份流程并在日志里提示缺少变量；如果你也不希望自动更新，建议设置 `DASHBOARD_VERSION` 固定版本。
+  - 不需要。四个备份变量（`GITHUB_USERNAME`、`REPO_NAME`、`GITHUB_TOKEN`、`ZIP_PASSWORD`）不填则完全跳过备份和恢复流程。
+- 不填 `ARGO_AUTH` 会怎样？
+  - 不会下载和启动 cloudflared，面板仅通过容器映射的端口访问。
+- 不填 `IDU` 或 `NZ_DOMAIN` 会怎样？
+  - 不会下载和启动 nezha-agent，仅运行 dashboard；如需自监控请同时填写这两个变量。
 - 探针不上报/连接失败？
   - 优先检查 `NZ_DOMAIN` 是否可从公网 443 访问、以及 `NZ_agentsecretkey` 是否与面板配置一致。
 
