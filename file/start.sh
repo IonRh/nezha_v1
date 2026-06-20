@@ -239,6 +239,9 @@ server {
         proxy_busy_buffers_size 256k;
         proxy_max_temp_file_size 0;
         proxy_pass http://127.0.0.1:8008;
+        # 必备：剥离条件请求头，绕过 Nezha 后端的 304→200 bug
+        proxy_set_header If-Modified-Since "";
+        proxy_set_header If-None-Match "";
     }
 }
 
