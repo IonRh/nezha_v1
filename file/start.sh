@@ -88,6 +88,65 @@ EOF
     fi
 }
 
+detect_theme_root() {
+    local theme_tmp="$1"
+    local index_file
+    local first_dir
+
+    index_file=$(find "$theme_tmp" -mindepth 1 -maxdepth 2 -type f -name 'index.html' | head -n 1)
+    if [ -n "$index_file" ]; then
+        dirname "$index_file"
+        return
+    fi
+
+    first_dir=$(find "$theme_tmp" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+    if [ -n "$first_dir" ]; then
+        printf '%s\n' "$first_dir"
+        return
+    fi
+
+    printf '%s\n' "$theme_tmp"
+}
+
+apply_extra_user_theme() {
+    [ -z "$NZ_EXTRA_USER_THEME" ] && return 0
+
+    local theme_url="$NZ_EXTRA_USER_THEME"
+    local theme_zip="$WORK_DIR/extra-user-theme.zip"
+    local theme_tmp="$WORK_DIR/.extra-user-theme"
+    local theme_root
+
+    echo "Downloading extra user theme..."
+    rm -rf "$theme_tmp"
+    mkdir -p "$theme_tmp"
+
+    if ! wget -q "$theme_url" -O "$theme_zip"; then
+        echo "Warning: extra user theme download failed: $theme_url"
+        rm -f "$theme_zip"
+        rm -rf "$theme_tmp"
+        return 0
+    fi
+
+    if ! unzip -qo "$theme_zip" -d "$theme_tmp"; then
+        echo "Warning: extra user theme unzip failed"
+        rm -f "$theme_zip"
+        rm -rf "$theme_tmp"
+        return 0
+    fi
+
+    theme_root=$(detect_theme_root "$theme_tmp")
+    mkdir -p "$WORK_DIR/user-dist"
+
+    if cp -r "$theme_root"/. "$WORK_DIR/user-dist/"; then
+        echo "Extra user theme applied: $theme_url"
+    else
+        echo "Warning: extra user theme copy failed"
+    fi
+
+    rm -f "$theme_zip"
+    rm -rf "$theme_tmp"
+}
+
 download_agent_dashboard() {
     local dash_file="dashboard-linux-${ARCH}.zip"
     local agent_file="nezha-agent_linux_${ARCH}.zip"
@@ -308,6 +367,7 @@ main() {
     setup_ssl
     create_nginx_config
     download_agent_dashboard
+    apply_extra_user_theme
 
     # 仅在设置了 ARGO_AUTH 时下载 cloudflared
     if [ -n "$ARGO_AUTH" ]; then

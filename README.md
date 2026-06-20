@@ -102,6 +102,7 @@ services:
 | `NZ_agentsecretkey` | 必填 | agent 密钥 | 需与 dashboard 配置中的 `agentsecretkey` 一致 |
 | `Force_Auth` | 建议 | 是否允许访客可见 | `true`=访客可见；`false`=需要登录（建议 `false`） |
 | `DASHBOARD_VERSION` | 可选 | 固定面板版本 | 例如 `v1.5.11`；设置后不自动更新 |
+| `NZ_EXTRA_USER_THEME` | 可选 | 自定义用户主题 zip 链接 | 下载后自动覆盖 `/app/user-dist` |
 | `NZ_ENABLE_TSDB` | 可选 | 是否启用 TSDB 历史指标 | `true`/`false`，默认关闭 |
 | `NZ_TSDB_DATA_PATH` | TSDB 可选 | TSDB 数据目录 | 默认 `/app/tsdb` |
 | `NZ_TSDB_RETENTION_DAYS` | TSDB 可选 | 历史数据保留天数 | 默认 `7` |
@@ -121,6 +122,35 @@ services:
 | 变量 | 说明 | 备注 |
 | --- | --- | --- |
 | `IDU` | 当前面板所在探针的 UUID | 写入 agent 配置中的 `uuid` 字段；用于识别/监测该容器对应的 agent |
+
+## 自定义主题
+
+本项目支持通过环境变量 `NZ_EXTRA_USER_THEME` 下载并覆盖默认用户主题目录 `/app/user-dist`。
+
+- 只需要填写一个 zip 下载地址，不需要手工执行 `unzip` 和 `cp`
+- 脚本会在下载 dashboard 后自动下载主题包、解压，并把主题内容复制到 `/app/user-dist`
+- 适配常见的主题发布结构：无论 zip 根目录直接是前端文件，还是像 `nezha-theme-lotus-dist/` 这种外层目录，都会自动识别
+
+### 示例
+
+```bash
+docker run -d \
+  --name nezha-v1 \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -v $(pwd)/data:/app/data \
+  -e NZ_agentsecretkey='YOUR_AGENT_SECRET_KEY' \
+  -e NZ_EXTRA_USER_THEME='https://github.com/fl0w1nd/Lotus/releases/latest/download/dist.zip' \
+  kwxos/newzhav1:latest
+```
+
+上面的配置等价于在容器启动时自动执行类似流程：
+
+```bash
+wget -O dist.zip https://github.com/fl0w1nd/Lotus/releases/latest/download/dist.zip
+unzip dist.zip
+cp -r nezha-theme-lotus-dist/. /app/user-dist
+```
 
 ## TSDB 开关
 
