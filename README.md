@@ -56,6 +56,9 @@ services:
       REPO_NAME: "YOUR_BACKUP_REPO"
       GITHUB_TOKEN: "YOUR_GH_TOKEN"
       ZIP_PASSWORD: "YOUR_ZIP_PASSWORD"
+      # NZ_ENABLE_TSDB: "true"      # 可选：启用 TSDB
+      # NZ_TSDB_DATA_PATH: "/app/data/tsdb"
+      # NZ_TSDB_RETENTION_DAYS: "30"
       # DASHBOARD_VERSION: "v1.5.11"  # 可选：固定版本，见下文
 ```
 
@@ -99,6 +102,13 @@ services:
 | `NZ_agentsecretkey` | 必填 | agent 密钥 | 需与 dashboard 配置中的 `agentsecretkey` 一致 |
 | `Force_Auth` | 建议 | 是否允许访客可见 | `true`=访客可见；`false`=需要登录（建议 `false`） |
 | `DASHBOARD_VERSION` | 可选 | 固定面板版本 | 例如 `v1.5.11`；设置后不自动更新 |
+| `NZ_ENABLE_TSDB` | 可选 | 是否启用 TSDB 历史指标 | `true`/`false`，默认关闭 |
+| `NZ_TSDB_DATA_PATH` | TSDB 可选 | TSDB 数据目录 | 默认 `/app/tsdb` |
+| `NZ_TSDB_RETENTION_DAYS` | TSDB 可选 | 历史数据保留天数 | 默认 `7` |
+| `NZ_TSDB_MIN_FREE_DISK_SPACE_GB` | TSDB 可选 | 最小剩余磁盘空间 | 默认 `0.3` |
+| `NZ_TSDB_MAX_MEMORY_MB` | TSDB 可选 | TSDB 最大内存使用量 | 默认 `64` |
+| `NZ_TSDB_WRITE_BUFFER_SIZE` | TSDB 可选 | 写入缓冲区大小 | 默认 `128` |
+| `NZ_TSDB_WRITE_BUFFER_FLUSH_INTERVAL` | TSDB 可选 | 写缓冲刷新间隔（秒） | 默认 `5` |
 | `IDU` | 可选 | agent 的 UUID | 与 `NZ_DOMAIN` 任一未填则不安装 agent |
 | `GITHUB_USERNAME` | 备份必填 | 备份用 GitHub 用户名 | 四个备份变量全部填写才启用备份 |
 | `REPO_NAME` | 备份必填 | 备份仓库名 | 仓库根目录保存 `data-*.zip` |
@@ -111,6 +121,43 @@ services:
 | 变量 | 说明 | 备注 |
 | --- | --- | --- |
 | `IDU` | 当前面板所在探针的 UUID | 写入 agent 配置中的 `uuid` 字段；用于识别/监测该容器对应的 agent |
+
+## TSDB 开关
+
+本项目现已支持通过环境变量启用或关闭哪吒的 TSDB 历史指标功能。
+
+- 默认关闭，不设置 `NZ_ENABLE_TSDB` 即不会启用。
+- 设置 `NZ_ENABLE_TSDB=true` 后，会自动把 TSDB 配置写入面板配置文件。
+- 默认数据目录为 `/app/tsdb`，不会被备份，如需备份数据目录设置为`/app/data/tsdb`。
+- 当前镜像默认按小规格机器下调了 TSDB 参数：`7` 天保留、`64MB` 内存上限、`0.3GB` 最小剩余磁盘、`128` 写入缓冲。
+
+### 最小示例
+
+```bash
+docker run -d \
+  --name nezha-v1 \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -v $(pwd)/data:/app/data \
+  -e NZ_agentsecretkey='YOUR_AGENT_SECRET_KEY' \
+  -e NZ_ENABLE_TSDB='true' \
+  kwxos/newzhav1:latest
+```
+
+### 自定义保留天数示例
+
+```bash
+docker run -d \
+  --name nezha-v1 \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -v $(pwd)/data:/app/data \
+  -e NZ_agentsecretkey='YOUR_AGENT_SECRET_KEY' \
+  -e NZ_ENABLE_TSDB='true' \
+  -e NZ_TSDB_RETENTION_DAYS='90' \
+  -e NZ_TSDB_MAX_MEMORY_MB='512' \
+  kwxos/newzhav1:latest
+```
 
 ## 备份 / 恢复机制
 
@@ -127,6 +174,8 @@ services:
 - 首次部署后立刻修改面板密码。
 - 建议 `Force_Auth=false`，避免面板对访客可见。
 - `GITHUB_TOKEN` 建议使用专用 token + 专用仓库，并尽量收敛权限。
+- 启用 TSDB 后，哪吒会切换到 TSDB 保存历史指标；旧的服务监控历史不会自动迁移。
+- TSDB 使用本地磁盘存储，建议为 `/app/data` 预留足够空间，并保持至少 20% 空闲空间。
 
 ## 常见问题
 

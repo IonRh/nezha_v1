@@ -14,14 +14,78 @@ case $(uname -m) in
     *)       echo "Unsupported architecture"; exit 1 ;;
 esac
 
+is_true() {
+    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        1|true|yes|on) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+wait_for_config_file() {
+    local retries=30
+    while [ ! -f "$CONFIG_FILE" ] && [ "$retries" -gt 0 ]; do
+        sleep 1
+        retries=$((retries - 1))
+    done
+}
+
+remove_yaml_block() {
+    local block_name="$1"
+    local tmp_file
+    tmp_file=$(mktemp)
+
+    # 删除顶层 YAML block，方便重新写入最新的 TSDB 配置。
+    awk -v block_name="$block_name" '
+        BEGIN { skipping = 0 }
+        $0 ~ ("^" block_name ":") {
+            skipping = 1
+            next
+        }
+        skipping {
+            if ($0 ~ /^[[:space:]]+/ || $0 ~ /^$/) {
+                next
+            }
+            skipping = 0
+        }
+        { print }
+    ' "$CONFIG_FILE" > "$tmp_file" && mv "$tmp_file" "$CONFIG_FILE"
+}
+
 change_config() {
     [ ! -f "$CONFIG_FILE" ] && return
+
     if grep -q "^force_auth:" "$CONFIG_FILE"; then
         sed -i "s/^force_auth:.*/force_auth: $Force_Auth/" "$CONFIG_FILE"
     else
         echo "force_auth: $Force_Auth" >> "$CONFIG_FILE"
     fi
     echo "force_auth 已设置为 $Force_Auth"
+
+    remove_yaml_block "tsdb"
+
+    if is_true "$NZ_ENABLE_TSDB"; then
+        local tsdb_data_path="${NZ_TSDB_DATA_PATH:-/app/tsdb}"
+        local tsdb_retention_days="${NZ_TSDB_RETENTION_DAYS:-7}"
+        local tsdb_min_free_disk_space_gb="${NZ_TSDB_MIN_FREE_DISK_SPACE_GB:-0.3}"
+        local tsdb_max_memory_mb="${NZ_TSDB_MAX_MEMORY_MB:-64}"
+        local tsdb_write_buffer_size="${NZ_TSDB_WRITE_BUFFER_SIZE:-128}"
+        local tsdb_write_buffer_flush_interval="${NZ_TSDB_WRITE_BUFFER_FLUSH_INTERVAL:-5}"
+
+        mkdir -p "$tsdb_data_path"
+
+        cat << EOF >> "$CONFIG_FILE"
+tsdb:
+  data_path: "$tsdb_data_path"
+  retention_days: $tsdb_retention_days
+  min_free_disk_space_gb: $tsdb_min_free_disk_space_gb
+  max_memory_mb: $tsdb_max_memory_mb
+  write_buffer_size: $tsdb_write_buffer_size
+  write_buffer_flush_interval: $tsdb_write_buffer_flush_interval
+EOF
+        echo "TSDB 已启用，数据目录：$tsdb_data_path"
+    else
+        echo "TSDB 未启用"
+    fi
 }
 
 download_agent_dashboard() {
@@ -256,6 +320,7 @@ main() {
     [ -f "nezha-agent" ] && chmod +x nezha-agent
 
     start_services
+    wait_for_config_file
     change_config
     # 重启 dashboard 使 config 生效
     pkill -f "dashboard-linux-${ARCH}" || true
