@@ -21,6 +21,22 @@ is_true() {
     esac
 }
 
+is_false() {
+    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        ""|0|false|no|off) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+has_any_tsdb_env() {
+    [ -n "${NZ_TSDB_DATA_PATH+x}" ] || \
+    [ -n "${NZ_TSDB_RETENTION_DAYS+x}" ] || \
+    [ -n "${NZ_TSDB_MIN_FREE_DISK_SPACE_GB+x}" ] || \
+    [ -n "${NZ_TSDB_MAX_MEMORY_MB+x}" ] || \
+    [ -n "${NZ_TSDB_WRITE_BUFFER_SIZE+x}" ] || \
+    [ -n "${NZ_TSDB_WRITE_BUFFER_FLUSH_INTERVAL+x}" ]
+}
+
 wait_for_config_file() {
     local retries=30
     while [ ! -f "$CONFIG_FILE" ] && [ "$retries" -gt 0 ]; do
@@ -54,16 +70,23 @@ remove_yaml_block() {
 change_config() {
     [ ! -f "$CONFIG_FILE" ] && return
 
+    local force_auth_value="${Force_Auth:-false}"
+    local tsdb_enable_set="${NZ_ENABLE_TSDB+x}"
+
     if grep -q "^force_auth:" "$CONFIG_FILE"; then
-        sed -i "s/^force_auth:.*/force_auth: $Force_Auth/" "$CONFIG_FILE"
+        sed -i "s/^force_auth:.*/force_auth: $force_auth_value/" "$CONFIG_FILE"
     else
-        echo "force_auth: $Force_Auth" >> "$CONFIG_FILE"
+        echo "force_auth: $force_auth_value" >> "$CONFIG_FILE"
     fi
-    echo "force_auth 已设置为 $Force_Auth"
+    echo "force_auth 已设置为 $force_auth_value"
 
-    remove_yaml_block "tsdb"
+    if [ -n "$tsdb_enable_set" ] || has_any_tsdb_env; then
+        if [ -n "$tsdb_enable_set" ] && is_false "$NZ_ENABLE_TSDB"; then
+            remove_yaml_block "tsdb"
+            echo "TSDB 已按环境变量关闭"
+            return
+        fi
 
-    if is_true "$NZ_ENABLE_TSDB"; then
         local tsdb_data_path="${NZ_TSDB_DATA_PATH:-/app/tsdb}"
         local tsdb_retention_days="${NZ_TSDB_RETENTION_DAYS:-7}"
         local tsdb_min_free_disk_space_gb="${NZ_TSDB_MIN_FREE_DISK_SPACE_GB:-0.3}"
@@ -71,6 +94,7 @@ change_config() {
         local tsdb_write_buffer_size="${NZ_TSDB_WRITE_BUFFER_SIZE:-128}"
         local tsdb_write_buffer_flush_interval="${NZ_TSDB_WRITE_BUFFER_FLUSH_INTERVAL:-5}"
 
+        remove_yaml_block "tsdb"
         mkdir -p "$tsdb_data_path"
 
         cat << EOF >> "$CONFIG_FILE"
@@ -84,7 +108,11 @@ tsdb:
 EOF
         echo "TSDB 已启用，数据目录：$tsdb_data_path"
     else
-        echo "TSDB 未启用"
+        if grep -q "^tsdb:" "$CONFIG_FILE"; then
+            echo "TSDB 保留现有配置"
+        else
+            echo "TSDB 未配置，保持不变"
+        fi
     fi
 }
 
@@ -108,8 +136,30 @@ detect_theme_root() {
     printf '%s\n' "$theme_tmp"
 }
 
+preserve_existing_user_theme() {
+    local theme_backup="$WORK_DIR/.preserved-user-dist"
+
+    rm -rf "$theme_backup"
+    [ ! -d "$WORK_DIR/user-dist" ] && return 1
+
+    cp -r "$WORK_DIR/user-dist" "$theme_backup"
+}
+
+restore_preserved_user_theme() {
+    local theme_backup="$WORK_DIR/.preserved-user-dist"
+
+    [ ! -d "$theme_backup" ] && return 0
+
+    rm -rf "$WORK_DIR/user-dist"
+    mv "$theme_backup" "$WORK_DIR/user-dist"
+    echo "保留现有 user-dist"
+}
+
 apply_extra_user_theme() {
-    [ -z "$NZ_EXTRA_USER_THEME" ] && return 0
+    [ -z "$NZ_EXTRA_USER_THEME" ] && {
+        restore_preserved_user_theme
+        return 0
+    }
 
     local theme_url="$NZ_EXTRA_USER_THEME"
     local theme_zip="$WORK_DIR/extra-user-theme.zip"
@@ -124,6 +174,7 @@ apply_extra_user_theme() {
         echo "Warning: extra user theme download failed: $theme_url"
         rm -f "$theme_zip"
         rm -rf "$theme_tmp"
+        restore_preserved_user_theme
         return 0
     fi
 
@@ -131,16 +182,20 @@ apply_extra_user_theme() {
         echo "Warning: extra user theme unzip failed"
         rm -f "$theme_zip"
         rm -rf "$theme_tmp"
+        restore_preserved_user_theme
         return 0
     fi
 
     theme_root=$(detect_theme_root "$theme_tmp")
+    rm -rf "$WORK_DIR/user-dist"
     mkdir -p "$WORK_DIR/user-dist"
 
     if cp -r "$theme_root"/. "$WORK_DIR/user-dist/"; then
         echo "Extra user theme applied: $theme_url"
+        rm -rf "$WORK_DIR/.preserved-user-dist"
     else
         echo "Warning: extra user theme copy failed"
+        restore_preserved_user_theme
     fi
 
     rm -f "$theme_zip"
@@ -369,6 +424,7 @@ main() {
 
     setup_ssl
     create_nginx_config
+    preserve_existing_user_theme || true
     download_agent_dashboard
     apply_extra_user_theme
 
@@ -406,11 +462,11 @@ while true; do
 
         if { [ "$file_date" != "$current_date" ] && [ "$current_hour" -eq 4 ]; } || [ "$readme_content" = "backup" ]; then
             [ -f "backup.sh" ] && ./backup.sh
-            [ -z "$DASHBOARD_VERSION" ] && ./renew.sh
+            [ -f "renew.sh" ] && ./renew.sh
         fi
     else
         # 没有备份配置时仍检查更新
-        [ -z "$DASHBOARD_VERSION" ] && ./renew.sh
+        [ -f "renew.sh" ] && ./renew.sh
     fi
 
     sleep 3600
