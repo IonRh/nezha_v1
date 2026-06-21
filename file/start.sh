@@ -462,11 +462,11 @@ while true; do
 
         if { [ "$file_date" != "$current_date" ] && [ "$current_hour" -eq 4 ]; } || [ "$readme_content" = "backup" ]; then
             [ -f "backup.sh" ] && ./backup.sh
-            [ -f "renew.sh" ] && ./renew.sh
+            [ -z "$DASHBOARD_VERSION" ] && [ -f "renew.sh" ] && ./renew.sh
         fi
     else
         # 没有备份配置时仍检查更新
-        [ -f "renew.sh" ] && ./renew.sh
+        [ -z "$DASHBOARD_VERSION" ] && [ -f "renew.sh" ] && ./renew.sh
     fi
 
     sleep 3600

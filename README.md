@@ -1,5 +1,7 @@
 ## Nezha v1 面板（容器版）
 
+中文 | [English](README_EN.md)
+
 V1 版哪吒面板容器，集成了以下能力：
 
 - Cloudflare Tunnel（token 模式，可选）
@@ -110,7 +112,7 @@ services:
 | --- | --- | --- | --- |
 | `NZ_agentsecretkey` | 必填 | agent 密钥 | 需与 dashboard 配置中的 `agentsecretkey` 一致 |
 | `Force_Auth` | 可选 | 是否允许访客可见 | `true`=访客可见；`false`=需要登录，默认 `false` |
-| `DASHBOARD_VERSION` | 可选 | 固定面板版本 | 例如 `v1.5.11`；设置后仅固定 dashboard 版本，不影响已启用 agent 的自动更新 |
+| `DASHBOARD_VERSION` | 可选 | 固定面板版本 | 例如 `v1.5.11`；设置后跳过自动更新 |
 
 ### 访问与自监控
 
@@ -253,7 +255,7 @@ docker run -d \
 ### 固定版本与自动更新
 
 - 不设置 `DASHBOARD_VERSION` 时，dashboard 会参与自动更新；如果已启用自监控，agent 也会参与自动更新
-- 设置 `DASHBOARD_VERSION` 后，会固定 dashboard 版本；如果已启用自监控，agent 仍可继续自动更新
+- 设置 `DASHBOARD_VERSION` 后，会跳过自动更新，不再执行 dashboard / agent 的更新检查
 
 ## 云平台部署示例（Docker 镜像）
 
